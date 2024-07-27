@@ -2,6 +2,10 @@
 
 
 
+
+
+
+
 import importlib
 import re
 import sys
@@ -279,6 +283,47 @@ async def dm_command(app, yuki_prefix):
                 await message.reply_text(f"Error downloading file: {str(e)}")
         except Exception as e:
             await message.reply_text(f"An error occurred while executing the dm command: {str(e)}")
+async def update_command(app, yuki_prefix):
+    @app.on_message(filters.me & filters.command("update", prefixes=yuki_prefix))
+    async def _update_command(_, message):
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get("https://api.github.com/repos/hoatudo/yuuki/commits?path=yuki.py") as response:
+                    response.raise_for_status()
+                    commits = await response.json()
+                    if not commits:
+                        await message.edit("❌ Bot not found in the repository.")
+                        return
+                    last_commit_hash = commits[0]["sha"]
+
+            local_commit_hash_file = "bot.commit"
+            if os.path.exists(local_commit_hash_file):
+                with open(local_commit_hash_file, "r") as file:
+                    local_commit_hash = file.read().strip()  
+                if local_commit_hash == last_commit_hash:
+                    await message.edit(f"❗Bot is already up to date. Version: {local_commit_hash[:7]}")
+                    return
+
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get("https://raw.githubusercontent.com/hoatudo/yuuki/main/yuki.py") as response:
+                        response.raise_for_status()
+                        file_name = "yuki.py"
+
+                        async with aiofiles.open(file_name, 'wb') as file:
+                            await file.write(await response.read())
+
+                        with open(local_commit_hash_file, "w") as file:
+                            file.write(last_commit_hash)
+
+                        await message.delete()
+                        await message.reply_text(
+                            f"✅ File `{file_name}` successfully downloaded and saved.\n\nVersion: {last_commit_hash[:7]}")
+                        os.execv(sys.executable, [sys.executable] + sys.argv)
+            except aiohttp.ClientError as e:
+                await message.reply_text(f"Error downloading file: {str(e)}")
+        except Exception as e:
+            await message.reply_text(f"An error occurred while executing the dm command: {str(e)}")
 
 
 async def load_module(app: Client, yuki_prefix):
@@ -435,10 +480,12 @@ def main():
     loop.run_until_complete(addprefix_command(app, yuki_prefix))
     loop.run_until_complete(load_module(app, yuki_prefix))
     loop.run_until_complete(check_file(app, yuki_prefix))
+    loop.run_until_complete(update_command(app, yuki_prefix))
 
     app.run()
 
 
 if __name__ == "__main__":
     main()
+
 
