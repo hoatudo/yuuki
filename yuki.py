@@ -262,7 +262,7 @@ async def update_command(app, yuki_prefix):
 
             try:
                 async with aiohttp.ClientSession() as session:
-                    async with session.get("https://raw.githubusercontent.com/hoatudo/yuгki/main/yuki.py") as response:
+                    async with session.get("https://raw.githubusercontent.com/hoatudo/yuuki/main/yuki.py") as response:
                         response.raise_for_status()
                         file_name = "yuki.py"
 
