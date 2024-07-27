@@ -301,9 +301,24 @@ async def update_command(app, yuki_prefix):
                 with open(local_commit_hash_file, "r") as file:
                     local_commit_hash = file.read().strip()  
                 if local_commit_hash == last_commit_hash:
-                    await message.edit(f"❗Bot is already up to date. Version: {local_commit_hash[:7]}")
+                    await message.edit(f"❗️Bot is already up to date. Version: {local_commit_hash[:7]}")
                     return
 
+            keyboard = [
+                [
+                    InlineKeyboardButton("Да", callback_data="update_yes"),
+                    InlineKeyboardButton("Нет", callback_data="update_no")
+                ]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await message.edit(f"I view new version bot, you want a download it? Version: {last_commit_hash[:7]}", reply_markup=reply_markup)
+
+        except Exception as e:
+            await message.reply_text(f"An error occurred while executing the dm command: {str(e)}")
+
+    @app.on_callback_query(filters.regex(r"^update_(yes|no)$"))
+    async def update_callback(_, callback_query):
+        if callback_query.data == "update_yes":
             try:
                 async with aiohttp.ClientSession() as session:
                     async with session.get("https://raw.githubusercontent.com/hoatudo/yuuki/main/yuki.py") as response:
@@ -313,17 +328,17 @@ async def update_command(app, yuki_prefix):
                         async with aiofiles.open(file_name, 'wb') as file:
                             await file.write(await response.read())
 
+                        local_commit_hash_file = "bot.commit"
                         with open(local_commit_hash_file, "w") as file:
                             file.write(last_commit_hash)
 
-                        await message.delete()
-                        await message.reply_text(
+                        await callback_query.edit_message_text(
                             f"✅ File `{file_name}` successfully downloaded and saved.\n\nVersion: {last_commit_hash[:7]}")
                         os.execv(sys.executable, [sys.executable] + sys.argv)
             except aiohttp.ClientError as e:
-                await message.reply_text(f"Error downloading file: {str(e)}")
-        except Exception as e:
-            await message.reply_text(f"An error occurred while executing the dm command: {str(e)}")
+                await callback_query.edit_message_text(f"Error downloading file: {str(e)}")
+        elif callback_query.data == "update_no":
+            await callback_query.edit_message_text("Ohh, you decline update.")
 
 
 async def load_module(app: Client, yuki_prefix):
